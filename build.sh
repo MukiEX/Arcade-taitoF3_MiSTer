@@ -57,7 +57,7 @@ export PATH="$QUARTUS_ROOTDIR/bin:$PATH"
 # cannot delete the db/ and output_files/ a running build is using -- that
 # failure looks like a Quartus internal error, not like two builds.
 # The lock is released when this script exits, however it exits.
-LOCK=/tmp/rayforce_build.lock
+LOCK=/tmp/jp3/rayforce_build.lock
 exec 9>>"$LOCK"
 if ! flock -n 9; then
     echo "REFUSED: a Ray Force build is already running (pid $(cat "$LOCK" 2>/dev/null))." >&2
@@ -74,7 +74,7 @@ rm -rf db incremental_db output_files
 # obvious rather than something to be inferred
 ./tools/make_build_stamp.sh
 
-LOG=/tmp/rayforce_build_progress.log
+LOG=/tmp/jp3/rayforce_build_progress.log
 rm -f "$LOG"
 
 # What the machine has right now. The 15G cap bounds the BUILD; it cannot
@@ -86,9 +86,10 @@ echo "available before start: $(free -g | awk '/^Mem:/{print $7}') GB (build pea
 # choom -n 1000: if physical memory runs out before the cgroup cap does
 # (other apps holding RAM), the global OOM killer picks the build, not them
 # (this systemd is too old for -p OOMScoreAdjust).
-systemd-run --user --scope --quiet \
-    -p MemoryHigh=10G -p MemoryMax=10G -p MemorySwapMax=0 -p CPUWeight=80 \
-    choom -n 1000 -- nice -n 5 quartus_sh --flow compile Rayforce > "$LOG" 2>&1 &
+#systemd-run --user --scope --quiet \
+#    -p MemoryHigh=10G -p MemoryMax=10G -p MemorySwapMax=0 -p CPUWeight=80 \
+#    choom -n 1000 -- nice -n 5 quartus_sh --flow compile Rayforce > "$LOG" 2>&1 &
+docker run -v $(pwd):/project theypsilon/quartus-lite-c5:17.0.2  quartus_sh --flow compile Rayforce > "$LOG" 2>&1 &
 BUILD_PID=$!
 
 # Progress monitor: watch the log for phase transitions

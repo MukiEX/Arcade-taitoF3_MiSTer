@@ -229,6 +229,11 @@ localparam CONF_STR = {
     "O[17:16],Audio Boost,8x,1x (exact),4x,16x;",
     "-;",
     "O[15],Pause When OSD Open,Off,On;",
+    // The board's JP3 jumper. On: each player's LEFT and RIGHT are the two
+    // phases of an optical spinner (Arkanoid Returns, Puchi Carat), counted
+    // into the dial ports, and stop being joystick directions. Off first so
+    // every other game boots with a working stick. See rtl/rf_spinner.sv.
+    "O[22],Spinner (JP3),Off,On;",
     // Darius Gaiden's vblank handler spins on a flag waiting for IRQ3 and
     // only then runs its frame handler, so how much work the game fits in a
     // frame depends on the 68020's real speed. "Full" is the core as it has
@@ -1302,6 +1307,7 @@ rf_main main
 
     .vbl_rise(vbl_rise),
     .j0(joy0_in), .j1(joy1_in), .six_button(cfg_six_button),
+    .spinner(status[22]),
     .pause(pause_eff),
     .test_sw(service_on),
     .nv_wr(nv_wr), .nv_addr(nv_addr), .nv_data(nv_data),

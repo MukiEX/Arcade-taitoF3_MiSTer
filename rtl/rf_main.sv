@@ -96,6 +96,9 @@ module rf_main
     // this is per game, from the MRA's game id (see Rayforce.sv).
     input  logic        six_button,
     input  logic        test_sw,        // cabinet TEST switch (OSD toggle)
+    // JP3 = spinner: each player's LEFT/RIGHT lines are quadrature phases
+    // A/B into the IN.2 / IN.3 dial counters instead of joystick bits.
+    input  logic        spinner,
 
     // ---- NVRAM: the settings EEPROM, loaded from and saved to the SD card
     // through hps_io's ioctl index 254 (see Rayforce.sv)
@@ -603,9 +606,11 @@ module rf_main
     // IN.1 low word: joysticks, active low, bit order up/down/left/right from
     // bit 0 up. MiSTer's joystick word is right/left/down/up from bit 0, so
     // the nibbles are reversed here. Bits 8-15 must read high.
+    // With JP3 on spinner the left/right lines belong to the encoder, so the
+    // joystick bits read released; up/down are untouched.
     wire [15:0] in1_lo = { 8'hFF,
-                           ~j1[0], ~j1[1], ~j1[2], ~j1[3],
-                           ~j0[0], ~j0[1], ~j0[2], ~j0[3] };
+                           ~(j1[0] & ~spinner), ~(j1[1] & ~spinner), ~j1[2], ~j1[3],
+                           ~(j0[0] & ~spinner), ~(j0[1] & ~spinner), ~j0[2], ~j0[3] };
 
     // The 6-button fighters' extra three, active low, at the bit positions
     // MAME's port map gives them (verified with tools/mame/ports.lua on both
@@ -620,13 +625,19 @@ module rf_main
         ? {13'h1FFF, ~j0[9], ~j0[8], ~j0[7]}
         : 16'hFFFF;
 
-    // NO dial. Arkanoid Returns is a paddle game and reads a 12-bit dial per
+    // Dial. Arkanoid Returns is a paddle game and reads a 12-bit dial per
     // player at index 5 and 7 (VERIFIED in MAME 2026-09-11: reads at 0x4A0008
     // and 0x4A000C, mask 0000FFFF, which big-endian is 0x4A000A / 0x4A000E).
-    // It was implemented and then taken back out the same day: the design was
-    // 16 LABs over and this was the newest thing in it, so it was the cheapest
-    // to drop. Put it back when there is room -- RESOURCES.md lever 1, the
-    // sl_d -> M10K move, is worth +163 LABs and would pay for it many times.
+    // An earlier dial was dropped for area (RESOURCES.md); this one is the
+    // board's own JP3 path only -- two 12-bit quadrature counters fed from
+    // LEFT/RIGHT, no analog-stick or mouse scaling -- and reads 0x0000 when
+    // the OSD "Spinner (JP3)" option is off, as before.
+    wire [15:0] dial0_q, dial1_q;
+    rf_spinner spin_p1 (.clk(clk), .reset(reset), .enable(spinner),
+                        .a(j0[1]), .b(j0[0]), .dial_q(dial0_q));
+    rf_spinner spin_p2 (.clk(clk), .reset(reset), .enable(spinner),
+                        .a(j1[1]), .b(j1[0]), .dial_q(dial1_q));
+
     logic [15:0] ctrl_q;
     always_comb begin
         case (a[4:1])
@@ -635,9 +646,9 @@ module rf_main
             4'h2: ctrl_q = coin_word0;          // IN.1 high word
             4'h3: ctrl_q = in1_lo;              // IN.1 low  word
             4'h4: ctrl_q = 16'hFFFF;            // IN.2 analog, high word
-            4'h5: ctrl_q = 16'h0000;            // IN.2 low: P1 dial, not fitted
+            4'h5: ctrl_q = dial0_q;             // IN.2 low: P1 dial (JP3)
             4'h6: ctrl_q = 16'hFFFF;            // IN.3 analog, high word
-            4'h7: ctrl_q = 16'h0000;            // IN.3 low: P2 dial, not fitted
+            4'h7: ctrl_q = dial1_q;             // IN.3 low: P2 dial (JP3)
             4'h8: ctrl_q = 16'hFFFF;            // IN.4 P3/P4 buttons, high word
             4'h9: ctrl_q = in4_lo;              // IN.4 low: P2 buttons 4-6
             4'hA: ctrl_q = coin_word1;          // IN.5 high word
