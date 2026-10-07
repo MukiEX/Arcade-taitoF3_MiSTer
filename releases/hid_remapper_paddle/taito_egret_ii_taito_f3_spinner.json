@@ -1,0 +1,152 @@
+{
+    "version": 18,
+    "unmapped_passthrough_layers": [],
+    "partial_scroll_timeout": 1000000,
+    "interval_override": 0,
+    "tap_hold_threshold": 200000,
+    "gpio_debounce_time_ms": 5,
+    "our_descriptor_number": 2,
+    "ignore_auth_dev_inputs": false,
+    "macro_entry_duration": 1,
+    "gpio_output_mode": 0,
+    "input_labels": 1,
+    "normalize_gamepad_inputs": true,
+    "mappings": [
+        {
+            "target_usage": "0x0009000c",
+            "source_usage": "0xfff30005",
+            "scaling": 1000,
+            "layers": [
+                0
+            ],
+            "sticky": false,
+            "tap": false,
+            "hold": false,
+            "source_port": 0,
+            "target_port": 0
+        },
+        {
+            "target_usage": "0x0009000b",
+            "source_usage": "0xfff30006",
+            "scaling": 1000,
+            "layers": [
+                0
+            ],
+            "sticky": false,
+            "tap": false,
+            "hold": false,
+            "source_port": 0,
+            "target_port": 0
+        },
+        {
+            "source_usage": "0x00090018",
+            "target_usage": "0x0009000a",
+            "layers": [
+                0
+            ],
+            "sticky": false,
+            "tap": false,
+            "hold": false,
+            "scaling": 1000,
+            "source_port": 0,
+            "target_port": 0
+        },
+        {
+            "source_usage": "0x00090017",
+            "target_usage": "0x00090009",
+            "layers": [
+                0
+            ],
+            "sticky": false,
+            "tap": false,
+            "hold": false,
+            "scaling": 1000,
+            "source_port": 0,
+            "target_port": 0
+        },
+        {
+            "source_usage": "0x0009001d",
+            "target_usage": "0x00090002",
+            "layers": [
+                0
+            ],
+            "sticky": false,
+            "tap": false,
+            "hold": false,
+            "scaling": 1000,
+            "source_port": 0,
+            "target_port": 0
+        },
+        {
+            "source_usage": "0x0009001e",
+            "target_usage": "0x00090003",
+            "layers": [
+                0
+            ],
+            "sticky": false,
+            "tap": false,
+            "hold": false,
+            "scaling": 1000,
+            "source_port": 0,
+            "target_port": 0
+        },
+        {
+            "source_usage": "0x0009001a",
+            "target_usage": "0x00090005",
+            "layers": [
+                0
+            ],
+            "sticky": false,
+            "tap": false,
+            "hold": false,
+            "scaling": 1000,
+            "source_port": 0,
+            "target_port": 0
+        }
+    ],
+    "macros": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+    ],
+    "expressions": [
+        "1000 recall 0x00010038 input_state 250 mul add -8000 8000 clamp 1000 store",
+        "3000 recall 1000 sub 0 max 3000 store",
+        "1000 recall 999 gt 1000 recall -999 lt sub 3000 recall 0 eq mul 4000 store",
+        "1000 recall 4000 recall sub 1000 store 2000 recall 4000 recall add 4000 add 4000 mod 2000 store 4000 recall abs 0 gt 4000 3000 recall ifte 3000 store",
+        "2000 recall 500 gt 2000 recall 2500 lt mul",
+        "2000 recall 1500 gt",
+        "",
+        ""
+    ],
+    "quirks": []
+}
