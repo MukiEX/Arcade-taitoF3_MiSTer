@@ -99,6 +99,12 @@ module rf_main
     // JP3 = spinner: each player's LEFT/RIGHT lines are quadrature phases
     // A/B into the IN.2 / IN.3 dial counters instead of joystick bits.
     input  logic        spinner,
+    // Mouse into the same dial counters (X -> P1, Y -> P2), one clk pulse
+    // per mouse packet. Already gated off by the caller when not wanted.
+    input  logic        mouse_stb,
+    input  logic signed [9:0] mouse_dx,
+    input  logic signed [9:0] mouse_dy,
+    input  logic  [1:0] mouse_sens,
 
     // ---- NVRAM: the settings EEPROM, loaded from and saved to the SD card
     // through hps_io's ioctl index 254 (see Rayforce.sv)
@@ -630,13 +636,18 @@ module rf_main
     // and 0x4A000C, mask 0000FFFF, which big-endian is 0x4A000A / 0x4A000E).
     // An earlier dial was dropped for area (RESOURCES.md); this one is the
     // board's own JP3 path only -- two 12-bit quadrature counters fed from
-    // LEFT/RIGHT, no analog-stick or mouse scaling -- and reads 0x0000 when
-    // the OSD "Spinner (JP3)" option is off, as before.
+    // LEFT/RIGHT, plus an optional MiSTer mouse added straight into the
+    // same counts (X -> P1, Y -> P2) -- and reads 0x0000 when the spinner
+    // path is off, as before.
     wire [15:0] dial0_q, dial1_q;
     rf_spinner spin_p1 (.clk(clk), .reset(reset), .enable(spinner),
-                        .a(j0[1]), .b(j0[0]), .dial_q(dial0_q));
+                        .a(j0[1]), .b(j0[0]),
+                        .mstb(mouse_stb), .mdelta(mouse_dx), .msens(mouse_sens),
+                        .dial_q(dial0_q));
     rf_spinner spin_p2 (.clk(clk), .reset(reset), .enable(spinner),
-                        .a(j1[1]), .b(j1[0]), .dial_q(dial1_q));
+                        .a(j1[1]), .b(j1[0]),
+                        .mstb(mouse_stb), .mdelta(mouse_dy), .msens(mouse_sens),
+                        .dial_q(dial1_q));
 
     logic [15:0] ctrl_q;
     always_comb begin

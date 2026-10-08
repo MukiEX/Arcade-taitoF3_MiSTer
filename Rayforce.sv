@@ -234,6 +234,14 @@ localparam CONF_STR = {
     // into the dial ports, and stop being joystick directions. Off first so
     // every other game boots with a working stick. See rtl/rf_spinner.sv.
     "O[22],Spinner (JP3),Off,On;",
+    // A mouse on the MiSTer turned into the two spinners: X is P1, Y is P2,
+    // added straight into the dial counters (rf_spinner.sv). Any setting but
+    // Off also sets JP3 to spinner, as the real board would need. Y+ is the
+    // mouse moving away from you; the third entry reverses P2.
+    "O[24:23],Mouse Spinner,Off,X=P1 Y=P2,X=P1 Y=P2 (P2 rev);",
+    // Spinner steps per mouse count. 1/4 first: it is the same ratio as the
+    // HID Remapper spinner config, so the two feel alike.
+    "O[26:25],Mouse Sensitivity,1/4,1/8,1/2,1;",
     // Darius Gaiden's vblank handler spins on a flag waiting for IRQ3 and
     // only then runs its frame handler, so how much work the game fits in a
     // frame depends on the 68020's real speed. "Full" is the core as it has
@@ -280,6 +288,7 @@ wire [31:0] joystick_0;
 wire [31:0] joystick_1;
 wire [15:0] joystick_l_analog_0, joystick_l_analog_1;   // Y[15:8], X[7:0], -127..127
 wire [15:0] nv_din;                                     // NVRAM readback to hps_io
+wire [24:0] ps2_mouse;                                  // mouse -> spinners, see below
 
 hps_io #(.CONF_STR(CONF_STR), .WIDE(1)) hps_io
 (
@@ -313,8 +322,25 @@ hps_io #(.CONF_STR(CONF_STR), .WIDE(1)) hps_io
     .joystick_1(joystick_1),
     .joystick_l_analog_0(joystick_l_analog_0),
     .joystick_l_analog_1(joystick_l_analog_1),
-    .ps2_key()
+    .ps2_key(),
+    .ps2_mouse(ps2_mouse)
 );
+
+// Mouse -> spinners. ps2_mouse is {toggle, Y[7:0], X[7:0], flags}: flags[4]
+// and [5] are the X and Y sign bits (9-bit deltas), and the toggle flips
+// once a whole packet has landed, so its edge is a clean strobe. PS/2 Y is
+// positive moving away from you.
+wire [1:0]  mouse_mode = status[24:23];
+wire        mouse_on   = (mouse_mode != 2'd0);
+logic       mouse_tgl  = 1'b0;
+logic       mouse_stb  = 1'b0;
+always_ff @(posedge clk_sys) begin
+    mouse_tgl <= ps2_mouse[24];
+    mouse_stb <= mouse_on & (mouse_tgl != ps2_mouse[24]);
+end
+wire signed [9:0] mouse_x  = {ps2_mouse[4], ps2_mouse[4], ps2_mouse[15:8]};
+wire signed [9:0] mouse_y  = {ps2_mouse[5], ps2_mouse[5], ps2_mouse[23:16]};
+wire signed [9:0] mouse_dy = (mouse_mode == 2'd2) ? -mouse_y : mouse_y;
 
 // The left analog stick steers too (an Xbox pad's stick is what most
 // people hold): past 48/127 of deflection it sets the digital direction,
@@ -1307,7 +1333,9 @@ rf_main main
 
     .vbl_rise(vbl_rise),
     .j0(joy0_in), .j1(joy1_in), .six_button(cfg_six_button),
-    .spinner(status[22]),
+    .spinner(status[22] | mouse_on),
+    .mouse_stb(mouse_stb), .mouse_dx(mouse_x), .mouse_dy(mouse_dy),
+    .mouse_sens(status[26:25]),
     .pause(pause_eff),
     .test_sw(service_on),
     .nv_wr(nv_wr), .nv_addr(nv_addr), .nv_data(nv_data),
