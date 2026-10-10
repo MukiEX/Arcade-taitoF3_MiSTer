@@ -202,6 +202,9 @@ assign BUTTONS   = 0;
 localparam CONF_STR = {
     "Rayforce;;",
     "-;",
+    // CRT position, analog sync only (rayforce_video). Labels kept short on
+    // purpose: this core builds CONF_STR as a lookup in ALMs, not BRAM.
+    "O[30:27],H Position,0,L4,L8,L12,L16,R16,R12,R8,R4;",
     "O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
     "O[7:6],Rotate,CW (TATE),CCW,None;",
     "O[14],Flip Screen,Off,On;",
@@ -471,6 +474,12 @@ wire [2:0] scandoubler_fx_osd = status[10:8];
 /* verilator lint_on UNUSED */
 wire [2:0] scandoubler_fx = 3'd0;
 wire       rate_60     = status[11];
+// H Position -> delay-chain tap (rayforce_video). H tap 4 is stock; menu
+// 1-4 = L4..L16 (taps 5-8), 5-8 = R16..R4 (taps 0-3). Out-of-list values
+// from a hand-edited CFG fall back to stock.
+wire [3:0] hpos_sel = status[30:27];
+wire [3:0] h_tap = (hpos_sel == 4'd0 || hpos_sel > 4'd8) ? 4'd4 :
+                   (hpos_sel <= 4'd4) ? hpos_sel + 4'd4 : hpos_sel - 4'd5;
 wire       video_rotated;
 // Flip Screen (OSD): 180 degrees on the ROTATED output, which is where a
 // cabinet's monitor mounting shows up. It acts on screen_rotate's
@@ -1665,6 +1674,7 @@ rayforce_video video
 
     .vis_mode(cfg_vis),
     .rate_60(rate_60),
+    .h_tap(h_tap),
     .vbl_rise(vbl_rise),
     .div_o(vid_div), .hcnt_o(vid_hcnt), .vcnt_o(vid_vcnt),
 

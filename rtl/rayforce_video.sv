@@ -69,6 +69,10 @@ module rayforce_video
     input  logic  [1:0] vis_mode,     // which F3 visarea (see below)
     input  logic        rate_60,
 
+    // CRT position (OSD), as a delay-chain tap -- see "sync" below.
+    //   h_tap 0..8: hsync delay in 4 px steps, 4 = stock (higher = picture left)
+    input  logic  [3:0] h_tap,
+
     output logic        vbl_rise,     // one pulse at the vblank interrupt line
 
     // raster position, for the self-test page renderer
@@ -145,8 +149,26 @@ module rayforce_video
 
     assign hblank = (hcnt < H_START) || (hcnt >= H_END);
     assign vblank = (vcnt < v_start) || (vcnt >= v_end);
-    assign hsync  = (hcnt >= HS_BEG) && (hcnt < HS_BEG + HS_WID);
-    assign vsync  = (vcnt >= vs_beg) && (vcnt < vs_beg + VS_WID[8:0]);
+    // ---- sync, with the OSD position shift -------------------------------
+    // Only the sync pulses move; pixels, blanking, counters and vbl_rise are
+    // untouched, so game timing and HDMI (which frames on DE) are unchanged.
+    // Built as a delay chain rather than a shifted compare -- the design
+    // sits at 99% ALMs and this is the cheapest form (8 flops and a mux).
+    //
+    // H: the pulse is generated 16 px EARLY (372; 372 and 404 are both
+    // multiples of 4, as is H_TOTAL) and delayed 0..8 blocks of 4 px, each
+    // stage taken as hcnt leaves a block. Tap 4 is the stock 388; 0 is 16 px
+    // right, 8 is 16 px left. The whole 372..436 range lies in hblank.
+    // V: stock. (A V Position chain was tried and cost too much fit room.)
+    wire       hs_raw    = (hcnt >= 9'd372) && (hcnt < 9'd404);
+    wire       blk_end   = (div == 3'd7) && (hcnt[1:0] == 2'd3);
+    logic [8:1] hs_dly;
+    always_ff @(posedge clk) begin
+        if (blk_end)  hs_dly <= {hs_dly[7:1], hs_raw};
+    end
+    wire [8:0] hs_taps = {hs_dly, hs_raw};
+    assign hsync = hs_taps[h_tap];
+    assign vsync = (vcnt >= vs_beg) && (vcnt < vs_beg + VS_WID[8:0]);
 
     wire [8:0] x = hcnt - H_START[8:0];   // 0..319 when visible
     wire [8:0] y = vcnt - v_start;        // 0 at the top visible line
